@@ -9,6 +9,7 @@ import { prismaClient } from "../routes/index.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { SendEmail } from "../services/gmail.js";
+import redis from "../services/redis.js";
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -114,8 +115,11 @@ export const OTPLoginController = async (req, res) => {
     `,
   });
 
+  //set otp
+  await redis.set(`otp:${phoneExists.phoneNo}`,otp,'EX',300) //5 minutes
+
   const token = jwt.sign(
-    { id: phoneExists.id, phoneNo: phoneExists.phoneNo, otp },
+    { id: phoneExists.id, phoneNo: phoneExists.phoneNo },
     JWT_SECRET,
     { expiresIn: "1h" }
   );
@@ -145,9 +149,13 @@ export const OTPVerifyLoginController = async (req, res) => {
   }
 
   console.log(typeof phoneData.otp);
-  console.log(typeof req.user.otp);
 
-  if (phoneData.otp !== req.user.otp) {
+  const storedOtp = await redis.get(`otp:${user.phoneNo}`);
+
+  console.log("user",typeof(phoneData.otp))
+  console.log("storedOtp",typeof(storedOtp))
+
+  if (phoneData.otp !== storedOtp) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
