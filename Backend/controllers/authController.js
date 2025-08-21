@@ -10,12 +10,15 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { SendEmail } from "../services/gmail.js";
 import redis from "../services/redis.js";
+import { BadRequestException } from "../exceptions/bad-request.js";
+import { ErrorCodes } from "../exceptions/root.js";
+import { NotFoundException } from "../exceptions/not-found.js";
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 //Register Controller
-export const RegisterController = async (req, res) => {
+export const RegisterController = async (req, res, next) => {
   const userData = userSchema.parse(req.body);
 
   if (
@@ -24,7 +27,7 @@ export const RegisterController = async (req, res) => {
     !userData.password ||
     !userData.phoneNo
   ) {
-    return res.status(400).json({ message: "Please fill all the fields" });
+    return next (new BadRequestException("All fields are required",ErrorCodes.ALL_FIELDS_REQUIRED))
   }
 
   const hashPassword = await hashSync(userData.password, 10);
@@ -42,11 +45,11 @@ export const RegisterController = async (req, res) => {
 };
 
 //Login Controller
-export const LoginController = async (req, res) => {
+export const LoginController = async (req, res, next) => {
   const userData = EmailLoginSchema.parse(req.body);
 
   if (!userData.email || !userData.password) {
-    return res.status(400).json({ message: "Please fill all the fields" });
+    return next (new BadRequestException("All fields are required",ErrorCodes.ALL_FIELDS_REQUIRED))
   }
 
   const user = await prismaClient.user.findUnique({
@@ -56,13 +59,13 @@ export const LoginController = async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    return next (new NotFoundException("User not found",ErrorCodes.USER_NOT_FOUND))
   }
 
   const isPasswordMatch = await compareSync(userData.password, user.password);
 
   if (!isPasswordMatch) {
-    return res.status(401).json({ message: "Invalid password" });
+    return next (new BadRequestException("Invalid password",ErrorCodes.INVALID_PASSWORD));
   }
 
   const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "1h" });
@@ -81,11 +84,11 @@ function Otpgenerator() {
 
 //otp-based login
 
-export const OTPLoginController = async (req, res) => {
+export const OTPLoginController = async (req, res,next) => {
   const phoneNumber = PhoneLoginSchema.parse(req.body);
 
   if (!phoneNumber) {
-    return res.status(400).json({ message: "phone number is required" });
+    return next( new BadRequestException("phone number is required",ErrorCodes.PHONE_NUMBER_REQUIRED))
   }
 
   const phoneExists = await prismaClient.user.findUnique({
@@ -95,7 +98,7 @@ export const OTPLoginController = async (req, res) => {
   });
 
   if (!phoneExists) {
-    return res.status(404).json({ message: "Phone number not found" });
+    return next( new NotFoundException("Phone number not found",ErrorCodes.USER_NOT_FOUND))
   }
 
   const otp = Otpgenerator();
@@ -131,11 +134,11 @@ export const OTPLoginController = async (req, res) => {
 
 //otp verify controller
 
-export const OTPVerifyLoginController = async (req, res) => {
+export const OTPVerifyLoginController = async (req, res,next) => {
   const phoneData = PhoneVerifyLoginSchema.parse(req.body);
 
   if (!phoneData.otp) {
-    return res.status(400).json({ message: "otp is mandatory" });
+    return next(new BadRequestException("OTP is required",ErrorCodes.OTP_IS_MANDATORY))
   }
 
   const user = await prismaClient.user.findUnique({
@@ -145,7 +148,7 @@ export const OTPVerifyLoginController = async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    return next(new NotFoundException("User not found",ErrorCodes.USER_NOT_FOUND))
   }
 
   console.log(typeof phoneData.otp);
@@ -156,7 +159,7 @@ export const OTPVerifyLoginController = async (req, res) => {
   console.log("storedOtp",typeof(storedOtp))
 
   if (phoneData.otp !== storedOtp) {
-    return res.status(400).json({ message: "Invalid OTP" });
+    return next(new BadRequestException("Invalid OTP",ErrorCodes.INVALID_OTP))
   }
 
   const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "1h" });
@@ -166,7 +169,7 @@ export const OTPVerifyLoginController = async (req, res) => {
 
 //Get User
 
-export const GetUserController = async (req, res) => {
+export const GetUserController = async (req, res,next) => {
   const id = req.user.id;
 
   const user = await prismaClient.user.findUnique({
@@ -176,7 +179,7 @@ export const GetUserController = async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    return next(new NotFoundException("User not found",ErrorCodes.USER_NOT_FOUND))
   }
 
   return res.status(200).json({ message: "User Retreived Sucessfully", user });

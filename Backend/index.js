@@ -1,6 +1,7 @@
 import express from "express"
 import dotenv from "dotenv";
 import rootRouter from "./routes/index.js";
+import { globalErrorHandler } from "./error-handler.js";
 
 dotenv.config();
 
@@ -14,6 +15,8 @@ app.get("/", (req, res) => {
 });
 
 app.use('/api',rootRouter);
+
+app.use(globalErrorHandler);
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

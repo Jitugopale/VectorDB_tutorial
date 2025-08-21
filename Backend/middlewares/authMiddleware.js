@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { UnauthorizedException } from "../exceptions/unauthorized.js";
+import { ErrorCodes } from "../exceptions/root.js";
 dotenv.config();
 
 export const authMiddleware = (req, res, next) => {
@@ -7,17 +9,17 @@ export const authMiddleware = (req, res, next) => {
     const token = req.header("auth-token");
 
     if (!token) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return next (new UnauthorizedException("Unauthorized",ErrorCodes.UNAUTHORIZED))
     }
 
     const user = jwt.verify(token, process.env.JWT_SECRET);
     if (!user) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return next (new UnauthorizedException("Unauthorized",ErrorCodes.UNAUTHORIZED))
     }
 
     req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return next (new UnauthorizedException("Unauthorized",ErrorCodes.UNAUTHORIZED))
   }
 };
