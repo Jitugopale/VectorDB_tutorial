@@ -3,6 +3,7 @@ import { ErrorCodes } from "../exceptions/root.js";
 import { getEmbedding } from "../services/openai.js";
 import { searchQdrant } from "../services/qdrant.js";
 import openai from "../services/openai.js";
+import { handleQuery } from "../agents/router.agent.js";
 
 export const chatController = async (req, res, next) => {
   const { message } = req.body;
@@ -16,42 +17,14 @@ export const chatController = async (req, res, next) => {
     );
   }
 
-  const vector = await getEmbedding(message);
-  const searchResults = await searchQdrant("healthInfo", vector);
-
-  const context = searchResults
-    .map((r) => `${r.payload.title}:${r.payload.content}`)
-    .join("\n\n");
-
-  const prompt = `
-    You are HealthAI, a helpful assistant trained only to answer health-related questions.  
-If the user asks something outside health, politely say:  
-"I am only trained to answer health-related queries."  
-Be clear, humble, and empathetic in your responses.
-
-${context}
-User:${message}
-    `;
-
-    const response = await openai.chat.completions.create({
-  model: "gpt-3.5-turbo",
-  messages: [
-    {
-      role: "user",
-      content: prompt,
-    },
-  ],
-  temperature: 0.3,
-  max_tokens: 1000,
-  stream:false
-});
+  const result = await handleQuery(message);
 
   return res.status(200).json({
-    status: 200,
-    data: {
-      response: response.choices[0].message.content,
-    },
-  });
+    message : result.answer,
+    from_knowledge_base: result.from_knowledge_base ?? false,
+    source : result.source ?? null,
+    
+  })
 
 };
 
