@@ -1,15 +1,22 @@
 
 import './App.css'
-import Sample from './components/Sample'
-
+import ChatPage from './components/ChatPage';
+import Login from './components/Login';
+import Register from './components/Register'
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 function App() {
 
   return (
     <>
-      <h1 className='text-3xl bg-red-300'>Hello, Multi Agent</h1>
-      <Sample/>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Register />} />
+          <Route path="/login" element={<Login/>} />
+          <Route path="/chat" element={<ChatPage/>} />
+        </Routes>
+      </Router>
     </>
-  )
+  );
 }
 
 export default App

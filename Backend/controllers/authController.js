@@ -30,6 +30,21 @@ export const RegisterController = async (req, res, next) => {
     return next (new BadRequestException("All fields are required",ErrorCodes.ALL_FIELDS_REQUIRED))
   }
 
+    const userExists = await prismaClient.user.findUnique({
+    where: {
+      email: userData.email,
+    },
+  });
+  
+  if(userExists){
+    return next(
+      new BadRequestException(
+        "User already exists",
+        ErrorCodes.USER_ALREADY_EXISTS,userExists.data
+      )
+    );
+  }
+
   const hashPassword = await hashSync(userData.password, 10);
 
   const user = await prismaClient.user.create({
