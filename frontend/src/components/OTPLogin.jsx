@@ -52,6 +52,7 @@ const OTPLogin = () => {
         if(response.message === "Login Successful"){
             setResponse(response.message)
             console.log(response.message)
+            sessionStorage.setItem('token',response.token)
 
             navigate('/chat')
         }
